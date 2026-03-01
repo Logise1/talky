@@ -628,6 +628,7 @@ Instrucciones estrictas:
 - SIN NADA DE MARKDOWN (ni negritas ni cursivas).
 - SOLO A VECES usa un (1) emoji, casi siempre debe ser texto plano y veloz.
 - Uso de jerga según la edad (${userData.age}). Usa las memorias si son relevantes al contexto actual.
+- NUNCA, BAJO NINGUNA CIRCUNSTANCIA, envíes un mensaje en nombre del usuario ("${userData.name}"). Todos los mensajes en "member" DEBEN ser de alguno de los Personajes disponibles. NUNCA del usuario.
 
 Ejemplo: {"messages": [{"chat": "Grupo de clase", "member": "${talkyMeta.classmates[0]}", "message": "q dices loco", "delay": 500, "newMemory": "Le gusta el rap"}, {"chat": "Grupo de clase", "member": "${talkyMeta.classmates[1]}", "message": "no m jodas", "delay": 2000}]}
 
