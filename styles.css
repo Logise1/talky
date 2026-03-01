@@ -560,3 +560,78 @@ body {
     color: #0f172a;
     border-color: #38bdf8;
 }
+
+/* Mobile Responsiveness */
+@media screen and (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 20;
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.chat-active {
+        transform: translateX(-100%);
+    }
+
+    .chat-area {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10;
+    }
+
+    /* Add a back button header on mobile */
+    .mobile-back-btn {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+        background: transparent;
+        border: none;
+        color: #38bdf8;
+        cursor: pointer;
+    }
+
+    .mobile-back-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    /* Hide the reply button default hover state on mobile, use always visible or tap logic */
+    .message .reply-btn {
+        opacity: 1;
+        visibility: visible;
+        width: 24px;
+        height: 24px;
+    }
+
+    .message.received .reply-btn {
+        right: -30px;
+    }
+
+    .message.sent .reply-btn {
+        left: -30px;
+    }
+
+    #profile-modal .card,
+    #memories-modal .card,
+    #login-screen .card {
+        max-width: 90%;
+        padding: 2rem;
+    }
+}

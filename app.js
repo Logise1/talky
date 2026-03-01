@@ -75,6 +75,10 @@ const editName = document.getElementById('edit-name');
 const editAge = document.getElementById('edit-age');
 const editProfile = document.getElementById('edit-profile');
 
+// Mobile elements
+const sidebar = document.querySelector('.sidebar');
+const mobileBackBtn = document.getElementById('mobile-back-btn');
+
 // === AUTH & INITIALIZATION ===
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -404,8 +408,21 @@ function openChat(chatId) {
     chatInputContainer.classList.remove('hidden');
     activeChatTitle.textContent = chatId;
 
+    // Mobile slide effect
+    if (window.innerWidth <= 768) {
+        sidebar.classList.add('chat-active');
+    }
+
     chatMessagesContainer.innerHTML = ''; // Force clear on switch
     renderMessages();
+}
+
+if (mobileBackBtn) {
+    mobileBackBtn.addEventListener('click', () => {
+        sidebar.classList.remove('chat-active');
+        activeChatId = null;
+        renderChatList();
+    });
 }
 
 function createMessageElement(msg, chatType) {
@@ -446,6 +463,13 @@ function createMessageElement(msg, chatType) {
 
 function renderMessages() {
     if (!activeChatId) return;
+
+    // In mobile show the back button
+    if (window.innerWidth <= 768 && mobileBackBtn) {
+        mobileBackBtn.style.display = 'flex';
+    } else if (mobileBackBtn) {
+        mobileBackBtn.style.display = 'none';
+    }
 
     const chat = chatsData[activeChatId];
 
