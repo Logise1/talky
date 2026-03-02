@@ -31,6 +31,10 @@ let replyingTo = null;
 let isRegisterMode = false;
 let currentUser = null;
 let dbUnsubscribe = null;
+let appSettings = {
+    flow: 'normal',
+    intensity: 5
+};
 
 // === DOM ELEMENTS ===
 const loginScreen = document.getElementById('login-screen');
@@ -79,6 +83,14 @@ const editProfile = document.getElementById('edit-profile');
 const sidebar = document.querySelector('.sidebar');
 const mobileBackBtn = document.getElementById('mobile-back-btn');
 
+// Settings elements
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+const conversationFlowSelect = document.getElementById('conversation-flow');
+const aiIntensityInput = document.getElementById('ai-intensity');
+
 // === AUTH & INITIALIZATION ===
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -107,6 +119,7 @@ async function loadUserDataFromFirestore(uid) {
             talkyMeta = data.talkyMeta;
             chatsData = data.chatsData || {};
             memoriesData = data.memoriesData || {};
+            appSettings = data.appSettings || { flow: 'normal', intensity: 5 };
 
             applyMetaBackground();
             showAppScreen();
@@ -323,7 +336,8 @@ REGLAS INFLEXIBLES:
                 userData: userData,
                 talkyMeta: talkyMeta,
                 chatsData: chatsData,
-                memoriesData: memoriesData
+                memoriesData: memoriesData,
+                appSettings: appSettings
             });
 
             applyMetaBackground();
@@ -555,7 +569,8 @@ async function saveChatsToFirestore() {
     try {
         await updateDoc(doc(db, "users", currentUser.uid), {
             chatsData: chatsData,
-            memoriesData: memoriesData
+            memoriesData: memoriesData,
+            appSettings: appSettings
         });
     } catch (e) {
         console.error("Error saving to Firestore", e);
@@ -567,7 +582,10 @@ function startAiLoop() {
     if (aiLoopInterval) clearInterval(aiLoopInterval);
 
     const scheduleNextAiAction = () => {
-        const randomTime = Math.floor(Math.random() * 10000) + 8000;
+        // Frequency depends on intensity: higher intensity = shorter delay
+        const baseDelay = 15000 - (appSettings.intensity * 1000);
+        const randomTime = Math.floor(Math.random() * baseDelay) + 5000;
+
         aiLoopInterval = setTimeout(async () => {
             if (currentUser) {
                 await triggerAiSimulation();
@@ -640,27 +658,30 @@ function buildAiPrompt() {
 Eres un grupo de amigos de ${userData.age} años hablando por WhatsApp con ${userData.name}.
 Personajes disponibles: ${talkyMeta.classmates.join(", ")}.
 
+MOOD ACTUAL DEL GRUPO: ${appSettings.flow.toUpperCase()} (Si es DRAMA, busca conflictos. Si es PARTY, busca planes. Si es MYSTERY, habla en clave. Si es NORMAL, charla cotidiana).
+
+INTERESES DEL USUARIO: ${userData.profile}
+
 Tu tarea: Decide si alguno o varios amigos envían mensajes ahora mismo.
 
 Instrucciones estrictas:
-- Devuelve EXACTAMENTE un JSON puro con un array llamado "messages" (SIN bloques markdown).
-- En cada objeto del array "messages" asógnale un "chat", "member", "message", y opcionalmente "delay" (milisegundos, ej: 1000).
-- OPCIONALMENTE, si un bot está respondiendo a un mensaje concreto, añade al objeto la clave "replyTo" con este formato: "replyTo": {"sender": "Nombre a quien responde", "message": "Texto que responde"}.
-- OJO: Ahora puedes generar nuevas memorias sobre el usuario. Si el usuario te cuenta algo importante (donde vive, que le gusta hacer, una mania, etc), puedes añadir a ESE objeto "message" una clave más: "newMemory" con un string de 3-5 palabras descriptivo (Ej: "newMemory": "Tiene perro llamado Toby").
-- A VECES devuelve 1 mensaje, pero OTRAS VECES (al azar, especialmente cuando responden a algo) simula un ESTALLIDO de notificaciones devolviendo 3, 4 o 5 mensajes cortos seguidos (de uno o varios personajes) separados por delays de 500-2000ms.
-- FRASES MUY CORTAS. MÁXIMO 8 PALABRAS.
-- SIN NADA DE MARKDOWN (ni negritas ni cursivas).
-- SOLO A VECES usa un (1) emoji, casi siempre debe ser texto plano y veloz.
-- Uso de jerga según la edad (${userData.age}). Usa las memorias si son relevantes al contexto actual.
-- NUNCA, BAJO NINGUNA CIRCUNSTANCIA, envíes un mensaje en nombre del usuario ("${userData.name}"). Todos los mensajes en "member" DEBEN ser de alguno de los Personajes disponibles. NUNCA del usuario.
+- Devuelve EXACTAMENTE un JSON puro con un array llamado "messages".
+- LOS BOTS PUEDEN Y DEBEN HABLAR ENTRE SÍ, no solo responder al usuario. Crea diálogos donde se ignora al usuario o se comenta algo sobre él.
+- En cada objeto haz un "chat", "member", "message", y opcionalmente "delay".
+- REGLA DE INTERÉS: Los bots deben hablar de temas que gusten al usuario (${userData.profile}). Si el usuario no responde a un tema nuevo, los bots deben volver a los temas seguros (sus intereses).
+- OPCIONALMENTE: "replyTo": {"sender": "Nombre", "message": "Texto"}.
+- OJO: "newMemory" (string 3-5 palabras) si descubren algo nuevo y relevante del usuario.
+- FRASES MUY CORTAS. MÁXIMO 8 PALABRAS. Jerga de ${userData.age} años.
+- Si el modo es DRAMA, los bots pueden pelearse entre ellos o criticar a alguien.
+- INTENSIDAD: ${appSettings.intensity}/10 (A mayor intensidad, mensajes más arriesgados, polémicos o con más emojis).
 
-Ejemplo: {"messages": [{"chat": "Grupo de clase", "member": "${talkyMeta.classmates[0]}", "message": "q dices loco", "delay": 500, "newMemory": "Le gusta el rap"}, {"chat": "Grupo de clase", "member": "${talkyMeta.classmates[1]}", "message": "no m jodas", "delay": 2000}]}
+Ejemplo: {"messages": [{"chat": "Grupo de clase", "member": "${talkyMeta.classmates[0]}", "message": "q dices loco", "delay": 500}]}
 
 ${memoriesStr}
 
 ${contextStr}
 
-Si el chat está tranquilo o nadie debe hablar ahora, devuelve: {"messages": []}
+Si no hay motivo para hablar, devuelve: {"messages": []}
     `;
 }
 
@@ -691,8 +712,9 @@ async function processQueue() {
 
     while (messageQueue.length > 0) {
         const action = messageQueue.shift();
+        const baseDelay = action.delay || 2500;
+        await new Promise(resolve => setTimeout(resolve, baseDelay));
         handleAiAction(action);
-        await new Promise(resolve => setTimeout(resolve, 2500)); // Queue each message 2.5s apart
     }
 
     isProcessingQueue = false;
@@ -830,6 +852,35 @@ if (saveProfileBtn) {
             }
             profileModal.classList.add('hidden');
         }
+    });
+}
+
+// === SETTINGS UI ===
+if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+        conversationFlowSelect.value = appSettings.flow;
+        aiIntensityInput.value = appSettings.intensity;
+        settingsModal.classList.remove('hidden');
+    });
+}
+
+if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+    });
+}
+
+if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', async () => {
+        appSettings.flow = conversationFlowSelect.value;
+        appSettings.intensity = parseInt(aiIntensityInput.value);
+
+        await saveChatsToFirestore();
+        settingsModal.classList.add('hidden');
+
+        // Reset AI loop to apply new intensity
+        startAiLoop();
+        triggerAiSimulation();
     });
 }
 

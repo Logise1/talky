@@ -82,6 +82,16 @@
                                 <path d="M12 5v14M5 12h14" />
                             </svg>
                         </button>
+                        <button id="settings-btn" title="Ajustes"
+                            style="background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; border-radius: 8px; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; transition: background 0.2s ease;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                </path>
+                            </svg>
+                        </button>
                         <button id="logout-btn" title="Cerrar sesión"
                             style="background: rgba(239, 68, 68, 0.2); border: none; color: #ef4444; cursor: pointer; border-radius: 8px; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; transition: background 0.2s ease;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -179,6 +189,41 @@
                 <textarea id="edit-profile" rows="3"></textarea>
             </div>
             <button id="save-profile-btn" class="btn-primary" style="margin-top: 1rem;">Guardar Cambios</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="screen hidden" style="background: rgba(0,0,0,0.8); z-index: 100;">
+        <div class="card" style="max-width: 400px; display: flex; flex-direction: column;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Ajustes de Charla</h2>
+                <button id="close-settings-btn"
+                    style="background: transparent; border: none; color: #94a3b8; cursor: pointer;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p>Cambia el flujo de la conversación y el comportamiento de los bots.</p>
+            <div class="input-group">
+                <label>Modo de Conversación</label>
+                <select id="conversation-flow"
+                    style="width: 100%; padding: 0.8rem; background: #0f172a; border: 1px solid #334155; border-radius: 10px; color: white; font-family: inherit;">
+                    <option value="normal">Normal (Día a día)</option>
+                    <option value="drama">Drama (Conflictos y salseo)</option>
+                    <option value="party">Fiesta (Planes y diversión)</option>
+                    <option value="mystery">Misterio (Secretos y suspense)</option>
+                    <option value="supportive">Apoyo (Amigos incondicionales)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Intensidad de IA</label>
+                <input type="range" id="ai-intensity" min="1" max="10" value="5" style="width: 100%;">
+                <div style="display:flex; justify-content: space-between; font-size: 0.8rem; color: #94a3b8;">
+                    <span>Relajado</span>
+                    <span>Caótico</span>
+                </div>
+            </div>
+            <button id="save-settings-btn" class="btn-primary" style="margin-top: 1rem;">Aplicar Cambios</button>
         </div>
     </div>
 

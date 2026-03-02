@@ -6,8 +6,8 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #0f172a;
-    color: #f8fafc;
+    background: #020617;
+    color: #f1f5f9;
     height: 100vh;
     display: flex;
     justify-content: center;
@@ -21,10 +21,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
+    z-index: 1;
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s;
 }
 
 .hidden {
@@ -174,10 +176,11 @@ body {
 /* App UI */
 .app-container {
     width: 100%;
-    max-width: 1400px;
     height: 100%;
     display: flex;
     background: #0f172a;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sidebar {
@@ -255,8 +258,9 @@ body {
 }
 
 .chat-item.active {
-    background: rgba(56, 189, 248, 0.1);
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), transparent);
     border-left: 4px solid #38bdf8;
+    box-shadow: inset 10px 0 20px -10px rgba(56, 189, 248, 0.3);
 }
 
 .chat-item-name {
@@ -431,8 +435,9 @@ body {
 }
 
 .btn-send:hover {
-    transform: scale(1.05);
+    transform: scale(1.1) rotate(5deg);
     background: #7dd3fc;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
 }
 
 .send-icon {
