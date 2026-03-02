@@ -16,6 +16,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Social Assistant sound
+let magicSound = null;
+
 // === APP CONFIG ===
 const MISTRAL_API_KEY = "evxly62Xv91b752fbnHA2I3HD988C5RT";
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
@@ -35,6 +38,13 @@ let appSettings = {
     flow: 'normal',
     intensity: 5
 };
+let socialStatus = {
+    battery: 100,
+    level: 1,
+    exp: 0,
+    quests: []
+};
+let friendshipLevels = {}; // Level with each character
 
 // === DOM ELEMENTS ===
 const loginScreen = document.getElementById('login-screen');
@@ -91,6 +101,12 @@ const saveSettingsBtn = document.getElementById('save-settings-btn');
 const conversationFlowSelect = document.getElementById('conversation-flow');
 const aiIntensityInput = document.getElementById('ai-intensity');
 
+// Introvert features DOM
+const socialBatteryVal = document.getElementById('social-battery-val');
+const socialBatteryFill = document.getElementById('social-battery-fill');
+const questsList = document.getElementById('quests-list');
+const aiHelpBtn = document.getElementById('ai-help-btn');
+
 // === AUTH & INITIALIZATION ===
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -120,7 +136,12 @@ async function loadUserDataFromFirestore(uid) {
             chatsData = data.chatsData || {};
             memoriesData = data.memoriesData || {};
             appSettings = data.appSettings || { flow: 'normal', intensity: 5 };
+            socialStatus = data.socialStatus || { battery: 100, level: 1, exp: 0, quests: [] };
+            friendshipLevels = data.friendshipLevels || {};
 
+            if (socialStatus.quests.length === 0) generateDailyQuests();
+
+            updateSocialUI();
             applyMetaBackground();
             showAppScreen();
 
@@ -394,12 +415,21 @@ function renderChatList() {
             prefix = 'Tú: ';
         }
 
+        const friendshipLvl = friendshipLevels[chatId] || 1;
+        const levelBadge = `<span class="level-badge">Niv. ${friendshipLvl}</span>`;
+
         const unreadCount = chat.unreadCount || 0;
         const unreadBadge = unreadCount > 0 ? `<div class="unread-badge">${unreadCount}</div>` : '';
 
+        const chatIdEl = document.createElement('div');
+        chatIdEl.className = 'chat-item-name';
+        chatIdEl.style.display = 'flex';
+        chatIdEl.style.alignItems = 'center';
+        chatIdEl.innerHTML = `<span>${chatId}</span> ${levelBadge}`;
+
         chatEl.innerHTML = `
             <div class="chat-item-content">
-                <div class="chat-item-name">${chatId}</div>
+                ${chatIdEl.outerHTML}
                 <div class="chat-item-last-msg">${prefix}${lastMsg.message}</div>
             </div>
             ${unreadBadge}
@@ -556,6 +586,11 @@ function sendMessage() {
     saveChatsToFirestore();
     renderMessages();
     renderChatList();
+
+    // Consume battery
+    consumeSocialBattery(2);
+    checkQuestCompletion('Hablar con alguien');
+    gainFriendship(activeChatId, 10);
 }
 
 sendBtn.addEventListener('click', sendMessage);
@@ -570,7 +605,9 @@ async function saveChatsToFirestore() {
         await updateDoc(doc(db, "users", currentUser.uid), {
             chatsData: chatsData,
             memoriesData: memoriesData,
-            appSettings: appSettings
+            appSettings: appSettings,
+            socialStatus: socialStatus,
+            friendshipLevels: friendshipLevels
         });
     } catch (e) {
         console.error("Error saving to Firestore", e);
@@ -595,6 +632,16 @@ function startAiLoop() {
     };
 
     scheduleNextAiAction();
+    startBatteryRecharge();
+}
+
+function startBatteryRecharge() {
+    setInterval(() => {
+        if (socialStatus.battery < 100) {
+            socialStatus.battery = Math.min(100, socialStatus.battery + 1);
+            updateSocialUI();
+        }
+    }, 60000); // 1% every minute
 }
 
 async function triggerAiSimulation() {
@@ -602,7 +649,10 @@ async function triggerAiSimulation() {
     isAiTyping = true;
 
     try {
-        const prompt = buildAiPrompt();
+        const statuses = ["Escuchando música", "Jugando", "En clase", "Aburrido/a", "Viendo una serie", "Online"];
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+
+        const prompt = buildAiPrompt(randomStatus);
         const responseData = await fetch(MISTRAL_URL, {
             method: 'POST',
             headers: {
@@ -638,7 +688,7 @@ async function triggerAiSimulation() {
     }
 }
 
-function buildAiPrompt() {
+function buildAiPrompt(currentVibe) {
     let contextStr = `ESTADO DE LOS CHATS:\n`;
     Object.keys(chatsData).forEach(chatId => {
         const chat = chatsData[chatId];
@@ -658,7 +708,8 @@ function buildAiPrompt() {
 Eres un grupo de amigos de ${userData.age} años hablando por WhatsApp con ${userData.name}.
 Personajes disponibles: ${talkyMeta.classmates.join(", ")}.
 
-MOOD ACTUAL DEL GRUPO: ${appSettings.flow.toUpperCase()} (Si es DRAMA, busca conflictos. Si es PARTY, busca planes. Si es MYSTERY, habla en clave. Si es NORMAL, charla cotidiana).
+MOOD ACTUAL DEL GRUPO: ${appSettings.flow.toUpperCase()}
+VIBE/ESTADO ACTUAL: ${currentVibe} (Úsalo para dar contexto a lo que dicen, ej: "estoy viendo una peli y...").
 
 INTERESES DEL USUARIO: ${userData.profile}
 
@@ -666,21 +717,14 @@ Tu tarea: Decide si alguno o varios amigos envían mensajes ahora mismo.
 
 Instrucciones estrictas:
 - Devuelve EXACTAMENTE un JSON puro con un array llamado "messages".
-- LOS BOTS PUEDEN Y DEBEN HABLAR ENTRE SÍ, no solo responder al usuario. Crea diálogos donde se ignora al usuario o se comenta algo sobre él.
-- En cada objeto haz un "chat", "member", "message", y opcionalmente "delay".
-- REGLA DE INTERÉS: Los bots deben hablar de temas que gusten al usuario (${userData.profile}). Si el usuario no responde a un tema nuevo, los bots deben volver a los temas seguros (sus intereses).
-- OPCIONALMENTE: "replyTo": {"sender": "Nombre", "message": "Texto"}.
-- OJO: "newMemory" (string 3-5 palabras) si descubren algo nuevo y relevante del usuario.
+- LOS BOTS PUEDEN Y DEBEN HABLAR ENTRE SÍ.
+- REGLA DE INTERÉS: Céntrate en lo que le gusta al usuario (${userData.profile}).
+- "newMemory" (string 3-5 palabras) si descubren algo nuevo.
 - FRASES MUY CORTAS. MÁXIMO 8 PALABRAS. Jerga de ${userData.age} años.
-- Si el modo es DRAMA, los bots pueden pelearse entre ellos o criticar a alguien.
-- INTENSIDAD: ${appSettings.intensity}/10 (A mayor intensidad, mensajes más arriesgados, polémicos o con más emojis).
-
-Ejemplo: {"messages": [{"chat": "Grupo de clase", "member": "${talkyMeta.classmates[0]}", "message": "q dices loco", "delay": 500}]}
+- INTENSIDAD: ${appSettings.intensity}/10.
 
 ${memoriesStr}
-
 ${contextStr}
-
 Si no hay motivo para hablar, devuelve: {"messages": []}
     `;
 }
@@ -855,7 +899,145 @@ if (saveProfileBtn) {
     });
 }
 
-// === SETTINGS UI ===
+// === INTROVERT SOCIAL SYSTEM LOGIC ===
+function updateSocialUI() {
+    if (socialBatteryVal) socialBatteryVal.textContent = `${Math.round(socialStatus.battery)}%`;
+    if (socialBatteryFill) socialBatteryFill.style.width = `${socialStatus.battery}%`;
+
+    // Visual feedback for low battery
+    if (socialStatus.battery < 20) {
+        socialBatteryFill.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+    } else {
+        socialBatteryFill.style.background = 'linear-gradient(90deg, #38bdf8, #818cf8)';
+    }
+
+    renderQuests();
+}
+
+function consumeSocialBattery(amount) {
+    socialStatus.battery = Math.max(0, socialStatus.battery - amount);
+    updateSocialUI();
+}
+
+function generateDailyQuests() {
+    const pool = [
+        "Responder a un mensaje",
+        "Hablar con alguien",
+        "Contar algo sobre ti",
+        "Iniciar un nuevo grupo",
+        "Llegar al Nivel 2 con alguien",
+        "Usar el Asistente Social"
+    ];
+    // Pick 3 random
+    const shuffled = pool.sort(() => 0.5 - Math.random());
+    socialStatus.quests = shuffled.slice(0, 3).map(q => ({ text: q, completed: false }));
+}
+
+function renderQuests() {
+    if (!questsList) return;
+    questsList.innerHTML = '';
+    socialStatus.quests.forEach(quest => {
+        const item = document.createElement('div');
+        item.className = `quest-item ${quest.completed ? 'completed' : ''}`;
+        item.innerHTML = `
+            <div class="quest-checkbox">${quest.completed ? '✓' : ''}</div>
+            <span>${quest.text}</span>
+        `;
+        questsList.appendChild(item);
+    });
+}
+
+function checkQuestCompletion(text) {
+    let changed = false;
+    socialStatus.quests.forEach(quest => {
+        if (quest.text === text && !quest.completed) {
+            quest.completed = true;
+            changed = true;
+            socialStatus.exp += 50;
+            // Level up logic
+            if (socialStatus.exp >= socialStatus.level * 200) {
+                socialStatus.level++;
+                socialStatus.exp = 0;
+                alert(`¡Subiste de nivel social! Ahora eres Nivel ${socialStatus.level}`);
+            }
+        }
+    });
+    if (changed) {
+        updateSocialUI();
+        saveChatsToFirestore();
+    }
+}
+
+function gainFriendship(char, amount) {
+    if (!char || char === "Sistema" || chatsData[char]?.type === 'group') return;
+    if (!friendshipLevels[char]) friendshipLevels[char] = 1;
+
+    // Simple logic: every 10 messages = 1 level
+    // In our case we use a counter
+    if (!window.friendshipCounters) window.friendshipCounters = {};
+    if (!window.friendshipCounters[char]) window.friendshipCounters[char] = 0;
+
+    window.friendshipCounters[char] += amount;
+    if (window.friendshipCounters[char] >= 100) {
+        friendshipLevels[char]++;
+        window.friendshipCounters[char] = 0;
+        renderChatList();
+    }
+}
+
+// === AI SOCIAL ASSISTANT ===
+if (aiHelpBtn) {
+    aiHelpBtn.addEventListener('click', async () => {
+        if (!activeChatId) return;
+
+        const originalText = aiHelpBtn.innerHTML;
+        aiHelpBtn.innerHTML = `<span class="spinner" style="width:16px; height:16px; border-width:2px; margin:0;"></span>`;
+        aiHelpBtn.disabled = true;
+
+        try {
+            const chat = chatsData[activeChatId];
+            const recent = chat.messages.slice(-5).map(m => `${m.sender}: ${m.message}`).join("\n");
+
+            const prompt = `
+Contexto de conversación reciente:
+${recent}
+
+El usuario (${userData.name}) es tímido e introvertido. Sugiérele UNA sola respuesta corta (máximo 10 palabras) que sea natural, amable y ayude a seguir la charla sin presión.
+Devuelve SOLO la frase sugerida, sin comillas ni nada más.
+            `;
+
+            const response = await fetch(MISTRAL_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${MISTRAL_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "mistral-medium-latest",
+                    messages: [
+                        { role: "system", content: "Eres un asistente social para personas introvertidas. Das sugerencias amables y naturales." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const suggestion = data.choices[0].message.content.trim();
+                messageInput.value = suggestion;
+                messageInput.focus();
+
+                checkQuestCompletion("Usar el Asistente Social");
+            }
+        } catch (e) {
+            console.error("Assistant error", e);
+        } finally {
+            aiHelpBtn.innerHTML = originalText;
+            aiHelpBtn.disabled = false;
+        }
+    });
+}
 if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
         conversationFlowSelect.value = appSettings.flow;

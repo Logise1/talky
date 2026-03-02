@@ -567,6 +567,113 @@ body {
 }
 
 /* Mobile Responsiveness */
+/* Introvert Specific Features */
+.social-stats {
+    padding: 1.5rem;
+    background: #0f172a;
+    border-top: 1px solid #334155;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #1e293b;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.quests-container h4 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.1rem;
+    margin-bottom: 1rem;
+}
+
+.quest-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.8rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.quest-item.completed {
+    opacity: 0.5;
+    background: rgba(34, 197, 94, 0.05);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.quest-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #334155;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.completed .quest-checkbox {
+    background: #22c55e;
+    border-color: #22c55e;
+}
+
+/* Action Button */
+.action-circle-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.action-circle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #38bdf8;
+    transform: rotate(15deg);
+}
+
+.level-badge {
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fcd34d;
+    margin-left: 5px;
+}
+
+/* Mobile adjustments */
 @media screen and (max-width: 768px) {
     .app-container {
         flex-direction: column;
